@@ -55,6 +55,19 @@ jobs:
           rm sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2
           wget -q https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx
 
+      # 核心新增步骤 1：尝试从 data 分支拉取最新数据库（实现平稳过渡与 Fork 兼容）
+      - name: Fetch database from data branch
+        run: |
+          mkdir -p data
+          # 尝试通过 GitHub Raw API 下载 data 分支上的数据库
+          curl -fL -o data/icourse.db.enc.tmp "https://raw.githubusercontent.com/${{ github.repository }}/data/data/icourse.db.enc" || echo "Fetch from data branch failed, falling back."
+          if [ -f data/icourse.db.enc.tmp ]; then
+            mv data/icourse.db.enc.tmp data/icourse.db.enc
+            echo "Successfully loaded latest database from data branch."
+          else
+            echo "Using fallback database from main branch or starting fresh."
+          fi
+
       # Decrypt database from repo (handles fork: different secrets = decrypt fails = start fresh)
       - name: Decrypt database
         if: hashFiles('data/icourse.db.enc') != ''
@@ -90,11 +103,12 @@ jobs:
           RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
         run: python -u main.py
 
-      # Encrypt and commit database only if it changed
-      - name: Commit database
+      # 核心修改步骤 2：加密并强制推送到隔离的 data 分支
+      - name: Deploy database to data branch
         if: always()
         env:
           DB_KEY: ${{ secrets.STUID }}${{ secrets.UISPSW }}${{ secrets.DASHSCOPE_API_KEY }}${{ secrets.SMTP_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ ! -f data/icourse.db ]; then
             echo "No database file, skipping."
@@ -107,12 +121,26 @@ jobs:
             exit 0
           fi
 
+          # 加密数据库
           openssl enc -aes-256-cbc -salt -pbkdf2 \
             -in data/icourse.db -out data/icourse.db.enc \
             -pass env:DB_KEY
 
+          echo "Deploying to data branch..."
+          # 创建全新的临时目录以隔离 git 历史
+          mkdir -p /tmp/db_deploy/data
+          cp data/icourse.db.enc /tmp/db_deploy/data/
+          cd /tmp/db_deploy
+          
+          # 初始化干净的 git 仓库并切换到 data 分支
+          git init
+          git checkout -b data
+          
+          # 配置 Bot 身份
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # 提交并强制推送
           git add data/icourse.db.enc
           git commit -m "chore: update encrypted database"
-          git push
+          git push --force "https://${{ github.actor }}:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" data
