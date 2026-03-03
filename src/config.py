@@ -26,10 +26,18 @@ LLM_MODELS = [
     "ZhipuAI/GLM-5",
     "deepseek-ai/DeepSeek-V3.2",
     "MiniMax/MiniMax-M2.5",
-    "ZhipuAI/GLM-4.7",
-    "deepseek-ai/DeepSeek-V3-0324",
     "Qwen/Qwen3.5-397B-A17B",
-    "Qwen/Qwen2.5-72B-Instruct"
+    "ZhipuAI/GLM-4.7"
+]
+
+# Groq fallback (for content policy bypass)
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+GROQ_MODELS = [
+    "llama-3.3-70b-versatile",
+    "llama-4-maverick",
+    "llama-4-scout",
+    "openai/gpt-oss-120b",
 ]
 
 # QQ SMTP
