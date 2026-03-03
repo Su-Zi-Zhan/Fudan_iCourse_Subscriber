@@ -20,6 +20,12 @@ on:
 permissions:
   contents: write
 
+# Reset is destructive — must not overlap with check/single_run (whose
+# additive merge would re-insert deleted rows).
+concurrency:
+  group: db-reset
+  cancel-in-progress: false
+
 jobs:
   reset:
     runs-on: ubuntu-latest

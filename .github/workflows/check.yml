@@ -117,8 +117,23 @@ jobs:
             exit 0
           fi
 
+          # Re-fetch latest remote DB (may have been updated by concurrent workflow)
+          DEPLOY_DB=data/icourse.db
+          git fetch origin data --depth=1 2>/dev/null || echo "No data branch yet."
+          if git rev-parse origin/data >/dev/null 2>&1; then
+            git show origin/data:data/icourse.db.enc > data/remote.db.enc 2>/dev/null || true
+            if [ -f data/remote.db.enc ] && \
+               openssl enc -aes-256-cbc -d -pbkdf2 \
+                 -in data/remote.db.enc -out data/remote.db \
+                 -pass env:DB_KEY 2>/dev/null; then
+              echo "Merging local changes into latest remote database..."
+              python scripts/merge_db.py data/icourse.db data/remote.db
+              DEPLOY_DB=data/remote.db
+            fi
+          fi
+
           openssl enc -aes-256-cbc -salt -pbkdf2 \
-            -in data/icourse.db -out data/icourse.db.enc \
+            -in "$DEPLOY_DB" -out data/icourse.db.enc \
             -pass env:DB_KEY
 
           echo "Deploying to data branch..."
