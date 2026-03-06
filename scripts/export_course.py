@@ -27,12 +27,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import config  # noqa: E402
 from src.database import Database  # noqa: E402
-from src.emailer import _EMAIL_CSS, _md_to_html  # noqa: E402
+from src.emailer import _EMAIL_CSS, _PYGMENTS_CSS, _md_to_html  # noqa: E402
 
 
-def _build_html(
-    course_title: str, teacher: str, lectures: list[dict], pdf_mode: bool = False
-) -> str:
+def _build_html(course_title: str, teacher: str, lectures: list[dict]) -> str:
     """Build a complete styled HTML document from course summaries."""
     body_parts = [
         f"<h1>{escape(course_title)}</h1>",
@@ -44,13 +42,13 @@ def _build_html(
             f"<h2>{escape(lec['sub_title'])} "
             f"<small>({escape(lec['date'])})</small></h2>"
         )
-        body_parts.append(_md_to_html(lec["summary"], pdf_mode=pdf_mode))
+        body_parts.append(_md_to_html(lec["summary"]))
         body_parts.append("<hr>")
 
     return (
         "<!DOCTYPE html>"
         "<html><head><meta charset='utf-8'>"
-        f"<style>{_EMAIL_CSS}</style>"
+        f"<style>{_EMAIL_CSS}\n{_PYGMENTS_CSS}</style>"
         "</head><body>"
         + "\n".join(body_parts)
         + "</body></html>"
@@ -157,7 +155,7 @@ def main():
         print("Email configuration incomplete. Set SMTP_EMAIL, SMTP_PASSWORD, RECEIVER_EMAIL.")
         sys.exit(1)
 
-    html = _build_html(course_title, teacher, lectures, pdf_mode=args.pdf)
+    html = _build_html(course_title, teacher, lectures)
     subject = f"[iCourse 课程摘要导出] {course_title}"
 
     if args.pdf:
