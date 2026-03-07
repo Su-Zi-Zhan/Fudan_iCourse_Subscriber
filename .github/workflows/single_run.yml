@@ -90,6 +90,7 @@ jobs:
           fi
 
       - name: Run
+        timeout-minutes: 350
         env:
           StuId: ${{ secrets.STUID }}
           UISPsw: ${{ secrets.UISPSW }}
