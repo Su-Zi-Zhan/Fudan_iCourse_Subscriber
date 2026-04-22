@@ -87,6 +87,11 @@
               d="M4 4v5h4.5M20 20v-5h-4.5M4.5 9A8 8 0 0119.5 15M19.5 15A8 8 0 014.5 9"/>
       </svg>
     </button>
+    <!-- Export (lectures view) -->
+    <button x-show="view === 'lectures'" @click="openExportDialog()"
+            class="text-sm bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600">
+      导出
+    </button>
     <!-- Edit (detail view, desktop) -->
     <button x-show="view === 'detail' && currentLecture?.transcript"
             @click="showTranscript = !showTranscript"
@@ -474,6 +479,58 @@
 
 </main>
 
+<!-- ── EXPORT DIALOG ── -->
+<div x-show="exportDialogOpen" x-transition.opacity
+     class="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center p-3"
+     @click.self="closeExportDialog()">
+  <div class="w-full max-w-2xl bg-white rounded-xl shadow-xl max-h-[85vh] flex flex-col">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+      <h3 class="font-semibold text-gray-800">导出课程摘要</h3>
+      <button @click="closeExportDialog()" class="text-gray-400 hover:text-gray-600 text-sm">关闭</button>
+    </div>
+
+    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+      <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+        <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-400"
+               :checked="isExportAllSelected()"
+               @change="setExportAll($event.target.checked)">
+        <span>全选</span>
+      </label>
+      <span class="text-xs text-gray-500" x-text="'已选 ' + selectedExportCount() + ' / ' + getExportableLectures().length"></span>
+    </div>
+
+    <div class="overflow-y-auto px-4 py-3 space-y-2">
+      <template x-for="lec in getExportableLectures()" :key="lec.sub_id">
+        <label class="flex items-start gap-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer">
+          <input type="checkbox" class="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-400"
+                 :checked="isLectureSelected(lec.sub_id)"
+                 @change="toggleLectureSelection(lec.sub_id, $event.target.checked)">
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-gray-800 truncate" x-text="lec.sub_title || 'Untitled'"></p>
+            <p class="text-xs text-gray-500 mt-1 line-clamp-2" x-text="snippet(lec.summary, 100)"></p>
+          </div>
+        </label>
+      </template>
+      <p x-show="getExportableLectures().length === 0" class="text-sm text-gray-500 text-center py-8">
+        当前课程暂无可导出的摘要。
+      </p>
+    </div>
+
+    <div class="px-4 py-3 border-t border-gray-100 flex justify-end gap-2">
+      <button @click="closeExportDialog()"
+              :disabled="exportingPdf"
+              class="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+        取消
+      </button>
+      <button @click="exportSelectedToPdf()"
+              :disabled="exportingPdf"
+              class="px-4 py-2 text-sm rounded-lg bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
+              x-text="exportingPdf ? '导出中…' : '导出 PDF'">
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ── TOAST ── -->
 <div x-show="toast" x-transition.opacity
      class="toast"
@@ -489,6 +546,8 @@
 <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
 <!-- DOMPurify (provides window.DOMPurify) -->
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<!-- html2pdf.js (provides window.html2pdf) -->
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 <!-- KaTeX + auto-render -->
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js"></script>

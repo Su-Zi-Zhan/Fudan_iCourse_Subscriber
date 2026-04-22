@@ -62,7 +62,7 @@ function _getCourses() {
 
 function _getLectures(courseId) {
   const rows = _queryAll(`
-    SELECT sub_id, sub_title, summary, processed_at,
+    SELECT sub_id, sub_title, date, summary, processed_at,
            error_stage, error_msg, summary_model, transcript
     FROM lectures WHERE course_id = ? ORDER BY sub_id ASC
   `, [courseId]);

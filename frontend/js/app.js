@@ -113,6 +113,23 @@ function _highlightSnippet(text, query, radius) {
   return snip.replace(re, "<mark>$1</mark>");
 }
 
+function _escapeHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function _getLectureDateString(dateText, processedAt) {
+  if (dateText) return String(dateText);
+  if (!processedAt) return "";
+  const d = new Date(processedAt);
+  if (Number.isNaN(d.getTime())) return String(processedAt);
+  return d.toISOString().slice(0, 10);
+}
+
 /* ── Alpine app ── */
 document.addEventListener("alpine:init", () => {
   Alpine.data("app", () => ({
@@ -127,6 +144,7 @@ document.addEventListener("alpine:init", () => {
     setup: { token: "", stuid: "", uispsw: "", dashscope: "", smtp: "" },
     setupError: "", setupTesting: false,
     settingsForm: {}, showSecrets: {},
+    exportDialogOpen: false, exportSelection: {}, exportingPdf: false,
     iterations: 10000, repoOwner: "", repoName: "", dataBranch: "data",
     _history: [],
 
@@ -205,6 +223,7 @@ document.addEventListener("alpine:init", () => {
       else if (view === "detail" && params.subId) { this.currentLecture = ICS.db.getLecture(params.subId); this.showTranscript = false; }
       else if (view === "edit") { this.editText = this.currentLecture?.summary || ""; this.editPreview = false; }
       this.view = view;
+      if (view !== "lectures") this.exportDialogOpen = false;
     },
     goBack() {
       const p = this._history.pop();
@@ -216,6 +235,119 @@ document.addEventListener("alpine:init", () => {
     openLecture(id) { this.navigate("detail", { subId: id }); },
     startEdit() { this.navigate("edit"); },
     cancelEdit() { this.goBack(); },
+
+    getExportableLectures() {
+      return (this.lectures || []).filter((lec) => lec.summary && lec.summary.trim());
+    },
+    openExportDialog() {
+      const list = this.getExportableLectures();
+      if (!list.length) { this._toast("No summarized lectures to export", "error"); return; }
+      this.exportSelection = {};
+      list.forEach((lec) => { this.exportSelection[lec.sub_id] = true; });
+      this.exportDialogOpen = true;
+    },
+    closeExportDialog() {
+      if (this.exportingPdf) return;
+      this.exportDialogOpen = false;
+    },
+    isLectureSelected(subId) { return !!this.exportSelection[subId]; },
+    toggleLectureSelection(subId, checked) { this.exportSelection[subId] = !!checked; },
+    setExportAll(checked) {
+      this.getExportableLectures().forEach((lec) => { this.exportSelection[lec.sub_id] = !!checked; });
+    },
+    isExportAllSelected() {
+      const list = this.getExportableLectures();
+      return list.length > 0 && list.every((lec) => this.exportSelection[lec.sub_id]);
+    },
+    selectedExportCount() {
+      return this.getExportableLectures().filter((lec) => this.exportSelection[lec.sub_id]).length;
+    },
+    _buildExportHtml(lectures) {
+      const courseTitle = this.currentCourse?.title || "课程";
+      const teacher = this.currentCourse?.teacher || "";
+      const sections = lectures.map((lec) => {
+        const dateText = _getLectureDateString(lec.date, lec.processed_at);
+        const title = _escapeHtml(lec.sub_title || "Untitled");
+        const subtitle = dateText ? `<small>(${_escapeHtml(dateText)})</small>` : "";
+        const titleLine = subtitle ? `${title} ${subtitle}` : title;
+        return `
+          <section>
+            <h2>${titleLine}</h2>
+            ${ICS.render.renderMarkdown(lec.summary || "")}
+          </section>
+          <hr>
+        `;
+      }).join("");
+      return `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif; color: #111827; }
+    h1 { font-size: 24px; margin: 0; }
+    .meta { color: #6b7280; margin: 8px 0 16px; font-size: 14px; }
+    section { page-break-inside: avoid; }
+    h2 { font-size: 18px; margin: 14px 0 10px; }
+    h2 small { font-size: 12px; font-weight: 400; color: #6b7280; margin-left: 6px; }
+    hr { border: none; border-top: 1px solid #e5e7eb; margin: 12px 0; }
+    p { line-height: 1.7; }
+    pre { white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word; }
+    img { max-width: 100%; }
+  </style>
+</head>
+<body>
+  <h1>${_escapeHtml(courseTitle)}</h1>
+  <p class="meta">${teacher ? `任课教师：${_escapeHtml(teacher)}` : ""}</p>
+  <hr>
+  ${sections}
+</body>
+</html>
+      `;
+    },
+    async exportSelectedToPdf() {
+      if (this.exportingPdf) return;
+      if (!window.html2pdf) {
+        this._toast("PDF library failed to load", "error");
+        return;
+      }
+      const selected = this.getExportableLectures().filter((lec) => this.exportSelection[lec.sub_id]);
+      if (!selected.length) {
+        this._toast("Please select at least one lecture", "error");
+        return;
+      }
+      this.exportingPdf = true;
+      let mount = null;
+      try {
+        mount = document.createElement("div");
+        mount.style.position = "fixed";
+        mount.style.left = "-10000px";
+        mount.style.top = "0";
+        mount.style.width = "794px";
+        mount.innerHTML = this._buildExportHtml(selected);
+        document.body.appendChild(mount);
+        const fileBase = (this.currentCourse?.title?.trim() || "course_summaries")
+          .replace(/[\\/:*?"<>|]+/g, "_");
+        await window.html2pdf()
+          .set({
+            margin: [12, 10, 12, 10],
+            filename: fileBase + "_summaries.pdf",
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+            pagebreak: { mode: ["css", "legacy"] },
+          })
+          .from(mount.firstElementChild || mount)
+          .save();
+        this.exportDialogOpen = false;
+        this._toast("PDF exported", "success");
+      } catch (e) {
+        this._toast(e?.message || "Export failed", "error");
+      } finally {
+        if (mount && mount.parentNode) mount.parentNode.removeChild(mount);
+        this.exportingPdf = false;
+      }
+    },
 
     async saveEdit() {
       if (this.saving) return;
