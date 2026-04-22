@@ -408,6 +408,7 @@ document.addEventListener("alpine:init", () => {
         mount.innerHTML = this._buildExportHtml(selected);
         document.body.appendChild(mount);
         const exportNode = mount.querySelector(".ics-export-root");
+        if (!exportNode) throw new Error("Failed to build export content");
         ICS.render.activateKaTeX(exportNode);
         const fileBase = (this.currentCourse?.title?.trim() || "course_summaries")
           .replace(/[\\/:*?"<>|]+/g, "_");
