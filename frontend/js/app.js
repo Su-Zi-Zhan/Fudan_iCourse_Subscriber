@@ -231,6 +231,7 @@ const _EXPORT_PDF_OVERRIDES_CSS = `
   page-break-inside: avoid;
 }
 `;
+const _EXPORT_MOUNT_Z_INDEX = "-2147483647";
 
 /* ── Alpine app ── */
 document.addEventListener("alpine:init", () => {
@@ -413,7 +414,7 @@ document.addEventListener("alpine:init", () => {
         mount.style.top = "0";
         mount.style.width = "794px";
         mount.style.pointerEvents = "none";
-        mount.style.zIndex = "-2147483647";
+        mount.style.zIndex = _EXPORT_MOUNT_Z_INDEX;
         mount.innerHTML = this._buildExportHtml(selected);
         document.body.appendChild(mount);
         const exportNode = mount.querySelector(".ics-export-root");
