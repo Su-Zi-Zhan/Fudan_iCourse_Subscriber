@@ -131,7 +131,7 @@ function _getLectureDateString(dateText, processedAt) {
 }
 
 const _EXPORT_EMAIL_CSS = `
-body {
+.ics-export-root {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
                "Helvetica Neue", Arial, sans-serif;
   font-size: 15px;
@@ -141,47 +141,47 @@ body {
   margin: 0 auto;
   padding: 20px;
 }
-h2 {
+.ics-export-root h2 {
   color: #2c3e50;
   border-bottom: 2px solid #3498db;
   padding-bottom: 8px;
   margin-top: 32px;
 }
-h2 small {
+.ics-export-root h2 small {
   color: #7f8c8d;
   font-weight: normal;
 }
-h3 {
+.ics-export-root h3 {
   color: #34495e;
   margin-top: 24px;
 }
-h3 small {
+.ics-export-root h3 small {
   color: #7f8c8d;
   font-weight: normal;
 }
-h4 { color: #555; margin-top: 18px; }
-hr {
+.ics-export-root h4 { color: #555; margin-top: 18px; }
+.ics-export-root hr {
   border: none;
   border-top: 1px solid #e0e0e0;
   margin: 28px 0;
 }
-strong { color: #c0392b; }
-table {
+.ics-export-root strong { color: #c0392b; }
+.ics-export-root table {
   border-collapse: collapse;
   width: 100%;
   margin: 12px 0;
 }
-th, td {
+.ics-export-root th, .ics-export-root td {
   border: 1px solid #ddd;
   padding: 8px 12px;
   text-align: left;
 }
-th {
+.ics-export-root th {
   background: #f5f6fa;
   font-weight: 600;
 }
-tr:nth-child(even) { background: #fafafa; }
-pre {
+.ics-export-root tr:nth-child(even) { background: #fafafa; }
+.ics-export-root pre {
   background: #f8f8f8;
   border: 1px solid #e0e0e0;
   border-radius: 4px;
@@ -193,30 +193,30 @@ pre {
   overflow-wrap: break-word;
   word-wrap: break-word;
 }
-code {
+.ics-export-root code {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 13px;
 }
-p code {
+.ics-export-root p code {
   background: #f0f0f0;
   padding: 2px 5px;
   border-radius: 3px;
 }
-blockquote {
+.ics-export-root blockquote {
   border-left: 4px solid #3498db;
   margin: 12px 0;
   padding: 8px 16px;
   background: #f8f9fa;
   color: #555;
 }
-ul, ol { padding-left: 24px; }
-li { margin-bottom: 4px; }
-img { max-width: 100% !important; height: auto !important; }
+.ics-export-root ul, .ics-export-root ol { padding-left: 24px; }
+.ics-export-root li { margin-bottom: 4px; }
+.ics-export-root img { max-width: 100% !important; height: auto !important; }
 `;
 
 const _EXPORT_PDF_LATEX_CSS = `
-img { max-width: 100% !important; height: auto !important; }
-body { font-family: "Microsoft YaHei", sans-serif; }
+.ics-export-root img { max-width: 100% !important; height: auto !important; }
+.ics-export-root { font-family: "Microsoft YaHei", sans-serif; }
 `;
 
 /* ── Alpine app ── */
@@ -398,6 +398,7 @@ document.addEventListener("alpine:init", () => {
       try {
         mount = document.createElement("div");
         mount.style.position = "fixed";
+        // Keep export node in viewport; html2canvas may output blank when source is fully off-screen.
         mount.style.left = "0";
         mount.style.top = "0";
         mount.style.width = "794px";
