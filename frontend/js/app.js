@@ -122,6 +122,14 @@ function _escapeHtml(s) {
     .replace(/'/g, "&#39;");
 }
 
+function _formatExportDate(dateText, processedAt) {
+  if (dateText) return String(dateText);
+  if (!processedAt) return "";
+  const d = new Date(processedAt);
+  if (Number.isNaN(d.getTime())) return String(processedAt);
+  return d.toISOString().slice(0, 10);
+}
+
 /* ── Alpine app ── */
 document.addEventListener("alpine:init", () => {
   Alpine.data("app", () => ({
@@ -258,7 +266,7 @@ document.addEventListener("alpine:init", () => {
       const courseTitle = this.currentCourse?.title || "Course";
       const teacher = this.currentCourse?.teacher || "";
       const sections = lectures.map((lec) => {
-        const dateText = lec.date || (lec.processed_at ? new Date(lec.processed_at).toLocaleDateString() : "");
+        const dateText = _formatExportDate(lec.date, lec.processed_at);
         const title = _escapeHtml(lec.sub_title || "Untitled");
         const subtitle = dateText ? `<small>${_escapeHtml(dateText)}</small>` : "";
         return `
@@ -295,7 +303,7 @@ document.addEventListener("alpine:init", () => {
     },
     async exportSelectedToPdf() {
       if (this.exportingPdf) return;
-      if (typeof window.html2pdf !== "function") {
+      if (!window.html2pdf) {
         this._toast("PDF library failed to load", "error");
         return;
       }
