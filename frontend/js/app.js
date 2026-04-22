@@ -130,7 +130,7 @@ function _getLectureDateString(dateText, processedAt) {
   return d.toISOString().slice(0, 10);
 }
 
-const _EXPORT_EMAIL_CSS = `
+const _EXPORT_SHARED_CSS = `
 .ics-export-root {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
                "Helvetica Neue", Arial, sans-serif;
@@ -214,7 +214,7 @@ const _EXPORT_EMAIL_CSS = `
 .ics-export-root img { max-width: 100% !important; height: auto !important; }
 `;
 
-const _EXPORT_PDF_LATEX_CSS = `
+const _EXPORT_PDF_OVERRIDES_CSS = `
 .ics-export-root img { max-width: 100% !important; height: auto !important; }
 .ics-export-root { font-family: "Microsoft YaHei", sans-serif; }
 `;
@@ -370,8 +370,8 @@ document.addEventListener("alpine:init", () => {
       return `
 <div class="ics-export-root">
   <style>
-    ${_EXPORT_EMAIL_CSS}
-    ${_EXPORT_PDF_LATEX_CSS}
+    ${_EXPORT_SHARED_CSS}
+    ${_EXPORT_PDF_OVERRIDES_CSS}
     .ics-export-root { background: #fff; }
     .ics-export-section { page-break-inside: avoid; }
   </style>
